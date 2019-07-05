@@ -1,0 +1,195 @@
+FeatureScript 1096;
+import(path : "onshape/std/geometry.fs", version : "1096.0");
+function Pif_teor(d is number)
+{
+    return(sqrt((d^2)/2));
+}
+//function to get x and y points needed for drawing arc
+//arc_radius === radius of needed arc
+// angle start === angle in +x and +y coordinates from what the arc starts(x axis is 0 degrees and y is 90) 
+// angle_end angle in +x and +y coordinates where the arc ends(x axis is 0 degrees, y is 90, -x is 180, -y is 270) 
+function calculate_points(arc_radius is number, angle_start is number, angle_end is number)
+{
+    var a = {x_start: 0,y_start:0, x_mid: 0, y_mid: 0, x_end : 0, y_end: 0};
+    a.y_start = y_dist(arc_radius, angle_start);
+    a.x_start = x_dist(arc_radius, a.y_start);
+    a.x_mid = Pif_teor(arc_radius);
+    a.y_mid = Pif_teor(arc_radius);
+    a.y_end = y_dist(arc_radius, angle_end);
+    a.x_end = x_dist(arc_radius, a.y_end);
+    return (a);
+}
+//function to draw arc by 3 points
+//a === is map(array) where all x and y points holds   a = {x_start: 0, y_start:0, x_mid: 0, y_mid: 0, x_end : 0, y_end: 0};
+// id === unique id for arc
+// my_sketch === sketch where all will be placed
+//cond === boolean (true or false) for drawing arc as construction line
+function Draw_arc_by_3_point(a is map, id is string, my_sketch is Sketch, cond is boolean)
+{
+     skArc(my_sketch, "arc" ~id , {
+            "start" : vector(a.x_start, a.y_start) * millimeter,
+            "mid" : vector(a.x_mid, a.y_mid) * millimeter,
+            "end" : vector(a.x_end,a.y_end) * millimeter,
+            "construction" : cond
+    });
+}
+//function to count points needed to draw side left arc
+//mid / bot / top === maps which contains all points of arcs to which this arc will be attached
+//angle start === angle in +x and +y coordinates from what the arc starts(x axis is 0 degrees and y is 90) 
+//arc_radius == //arc_radius === radius of needed arc
+//arc_end_radius == radius of side arc
+function left_side_arc_point(mid is map, bot is map, top is map, angle_start is number,arc_radius is number, arc_end_radius is number)
+{
+    var a = {x_start: 0,y_start:0, x_mid: 0, y_mid: 0, x_end : 0, y_end: 0};
+    if (angle_start == 120)
+    {
+          a = {x_start: arc_radius - arc_end_radius,y_start:0, x_mid:arc_radius, y_mid: - arc_end_radius, x_end : arc_radius+arc_end_radius, y_end: 0};
+    }
+    else if (angle_start < 0)
+    {
+         a = {x_start: bot.x_end, y_start:bot.y_end, x_mid:mid.x_end - arc_end_radius, y_mid:mid.y_end, x_end :top.x_end, y_end: top.y_end};
+    }
+    else
+    {
+          a = {x_start: bot.x_end,y_start:bot.y_end, x_mid: mid.x_end + arc_end_radius, y_mid: mid.y_end, x_end : top.x_end, y_end: top.y_end};
+    }
+    return (a);
+}
+
+//function to count points needed to draw side left arc
+//mid / bot / top === maps which contains all points of arcs to which this arc will be attached
+//arc_end_radius == radius of side arc
+function right_side_arc_point(mid is map, bot is map, top is map, arc_end_radius is number)
+{
+     var a = {x_start: bot.x_start,y_start:bot.y_start, x_mid: mid.x_start - arc_end_radius, y_mid: mid.y_start, x_end : top.x_start, y_end: top.y_start};
+     return (a);
+}
+
+//count distance to Y point for arc
+//rad === radius of arc
+//cor === corner from X axis to arc
+function y_dist(rad is number, cor is number)
+{
+    return(sin(cor * degree) * rad);
+}
+
+//count distance to X point for arc
+//rad === radius of arc
+//y_distanse === distance to Y point for arc
+function x_dist(rad is number, y_distance is number)
+{
+    return(sqrt(rad^2 - y_distance^2));
+}
+
+ //arc_radius === radius of arc center 
+ //arc_end_radius  === distanse from centered arc to sides
+ // angle start === angle in +x and +y coordinates from what the arc starts(x axis is 0 degrees and y is 90) 
+ // angle_end angle in +x and +y coordinates where the arc ends(x axis is 0 degrees, y is 90, -x is 180, -y is 270) 
+ // my_sketch === sketch where all will be placed
+ // id === unique id for arc
+function DrawArc(arc_radius is number, arc_end_radius is number, angle_start is number, angle_end is number, my_sketch is Sketch, id is number)
+{   
+
+     var a1 is map = calculate_points(arc_radius, angle_start, angle_end);    
+     Draw_arc_by_3_point(a1, "mid" ~ id, my_sketch, true);
+    
+     var a2 = calculate_points(arc_radius+arc_end_radius, angle_start, angle_end);
+     Draw_arc_by_3_point(a2, "bot" ~ id, my_sketch, false);
+
+     var a3 = calculate_points(arc_radius-arc_end_radius, angle_start, angle_end);
+     Draw_arc_by_3_point(a3, "top" ~ id, my_sketch, false);
+     
+     var left_arc = left_side_arc_point(a1, a2, a3, angle_start, arc_radius, arc_end_radius);
+     Draw_arc_by_3_point(left_arc, "left_arc" ~id, my_sketch, false);
+     
+     var right_arc = right_side_arc_point(a1, a2, a3, arc_end_radius);
+     Draw_arc_by_3_point(right_arc, "right_arc" ~id, my_sketch, false);
+
+}
+annotation { "Feature Type Name" : "script" }
+export const myFeature = defineFeature(function(context is Context, id is Id, definition is map)
+    precondition
+    {
+        // Define the parameters of the feature type
+         annotation { "Name" : "circle_diametr" }
+        isInteger(definition.myCount_width, {(unitless) : [0, 150, 250] } as IntegerBoundSpec );
+         annotation { "Name" : "arc_1_radius" }
+        isInteger(definition.arc_top_radius, {(unitless) : [1, 65, 150] } as IntegerBoundSpec );
+         annotation { "Name" : "arc_1_end_radius" }
+        isInteger(definition.arc_top_end_radius, {(unitless) : [1, 5, 10] } as IntegerBoundSpec );
+         annotation { "Name" : "arc_2_radius" }
+        isInteger(definition.arc_2_radius, {(unitless) : [0, 50, 150] } as IntegerBoundSpec );
+         annotation { "Name" : "arc_2_end_radius" }
+        isInteger(definition.arc_2_end_radius,  {(unitless) : [1, 5, 10] } as IntegerBoundSpec );
+         annotation { "Name" : "arc_3_radius" }
+        isInteger(definition.arc_3_radius, {(unitless) : [1, 35, 150] } as IntegerBoundSpec );
+         annotation { "Name" : "arc_3_end_radius" }
+        isInteger(definition.arc_3_end_radius, {(unitless) : [1, 5, 10] } as IntegerBoundSpec );
+        annotation { "Name" : "angle_arc1" }
+        isInteger(definition.angle_arc1,{(unitless) : [0, 30, 30] } as IntegerBoundSpec );
+        annotation { "Name" : "angle_arc2" }
+        isInteger(definition.angle_arc2,{(unitless) : [0, 0, 30] } as IntegerBoundSpec );
+        annotation { "Name" : "angle_arc3" }
+        isInteger(definition.angle_arc3, {(unitless) : [0, 0, 29] } as IntegerBoundSpec );                  
+    }
+    {
+        var cir_diam = definition.myCount_width / 2;
+        var arc_top_r = definition.arc_top_radius;
+   
+        var arc_top_end_r = definition.arc_top_end_radius;
+        if (arc_top_r > cir_diam - arc_top_end_r)
+            arc_top_r = cir_diam - arc_top_end_r;
+            
+        var arc_2_r = definition.arc_2_radius;
+        var arc_2_end_r = definition.arc_2_end_radius; 
+        if (arc_2_r > arc_top_r - arc_top_end_r - arc_2_end_r - 1)        
+            arc_2_r = arc_top_r - arc_top_end_r - arc_2_end_r - 1;
+        
+        var arc_3_r = definition.arc_3_radius;
+        var arc_3_end_r = definition.arc_3_end_radius;
+        if (arc_3_r > arc_2_r - arc_2_end_r - arc_3_end_r - 1)        
+            arc_3_r = arc_2_r - arc_2_end_r - arc_3_end_r - 1;
+        
+        var angle_arc1 = 120 - definition.angle_arc1;
+        var angle_arc2 = 120 - definition.angle_arc2;   
+        var angle_arc3_end = 45.7 + definition.angle_arc3;
+        var angle_arc3_start = -30 + definition.angle_arc3;
+//                                                  CREATING MAIN CIRCLE
+        var circle = newSketch(context, id + "circle", {
+                "sketchPlane" : qCreatedBy(makeId("Top"), EntityType.FACE)
+        });
+                    skCircle(circle, "circle1", {
+              "center" : vector(0, 0) * millimeter,
+              "radius" : cir_diam * millimeter
+      });
+        skSolve(circle);        
+        
+      var main = newSketch(context, id + "main", {
+              "sketchPlane" : qCreatedBy(makeId("Top"), EntityType.FACE)
+      });
+//                                                 LINE FOR CIRCLE PATTERN
+      var cir_pat = newSketch(context, id + "sketch1", {
+              "sketchPlane" : qCreatedBy(makeId("Right"), EntityType.FACE)
+      });
+
+      skLineSegment(cir_pat, "line1", {
+              "start" : vector(0, 0) * millimeter,
+              "end" : vector(0, 10) * millimeter                
+      });
+      
+    DrawArc(arc_top_r, arc_top_end_r,angle_arc1,60+ angle_arc1, main, 1);
+
+    DrawArc(arc_2_r, arc_2_end_r, angle_arc2, 60 + angle_arc2, main, 2);
+
+    DrawArc(arc_3_r, arc_3_end_r,angle_arc3_start, angle_arc3_end, main, 3);
+     
+      skSolve(main);
+      skSolve(cir_pat);
+      circularPattern(context, id + "circularPattern1", {
+              "patternType" : PatternType.PART,
+              "entities" : qCreatedBy(id + "main", EntityType.BODY),
+              "axis" :qCreatedBy(id + "sketch1", EntityType.EDGE),
+              "angle" : 120 * degree,
+              "instanceCount" : 3
+      });
+    });

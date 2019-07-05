@@ -1,0 +1,186 @@
+FeatureScript 1096;
+import(path : "onshape/std/geometry.fs", version : "1096.0");
+
+//function do draw circle
+//my_sketch === sketch on what to draw
+//rad === radius of circle
+//x and y === center points of circle
+//id === unique id for entitie on sketch 
+function Draw_circle(my_sketch is Sketch, rad is number, x is number, y is number, id is string)
+{
+    skCircle(my_sketch, "circle" ~ id, {
+                    "center" : vector(x, y ) * millimeter,
+                    "radius" : rad * millimeter });
+}
+
+annotation { "Feature Type Name" : "LEGO" }
+export const myFeature = defineFeature(function(context is Context, id is Id, definition is map)
+    precondition
+    {
+  //                          Define the parameters of the feature type
+        annotation { "Name" : "Lenght" }
+        isInteger(definition.myCount_len, POSITIVE_COUNT_BOUNDS);
+         annotation { "Name" : "Width" }
+        isInteger(definition.myCount_width, POSITIVE_COUNT_BOUNDS); 
+         annotation { "Name" : "Text" }
+         definition.myString is string;        
+    }
+    {
+        var len = 8 * definition.myCount_len;
+        var width = 8 * definition.myCount_width;
+        var height = 9.6;
+        var circle_height = height + 1.6;
+        var dist_to_center_circle = 4;
+        var radius_circles_top = 2.4;
+        var bot_thik = 1.6;
+        var bot_stik_thik = 3.2;
+        var dist_to_bot_big_cir = 8;
+        var str_text = definition.myString;
+              
+  //                          CREATE BASE
+        var base_sketch = newSketch(context, id + "base", {
+                "sketchPlane" : qCreatedBy(makeId("Top"), EntityType.FACE)
+        });
+              skRectangle(base_sketch, "rectangle1", {
+                      "firstCorner" : vector(0, 0) * millimeter,
+                      "secondCorner" : vector(len, width) * millimeter
+              });    
+              
+     skSolve(base_sketch);
+     extrude(context, id + "extrude1", {
+                "entities" : qSketchRegion(id + "base"),
+                "endBound" : BoundingType.BLIND,
+                "depth" : height * millimeter
+        });
+
+  //                          CREATE CIRCLES ON TOP / HOLES FROM INSIDE / TEXT
+    var top_circle = newSketch(context, id + "top_circles", {
+                     "sketchPlane" : qCreatedBy(makeId("Top"), EntityType.FACE)
+             });
+    var top_circle_inside = newSketch(context, id + "top_circle_inside", {
+                     "sketchPlane" : qCreatedBy(makeId("Top"), EntityType.FACE)
+             });
+    var text = newSketch(context, id + "text", {
+            "sketchPlane" : qCreatedBy(makeId("Top"), EntityType.FACE)
+             });
+             for (var i = 0; i < definition.myCount_len; i += 1)
+             {                                                                            
+                  for (var j = 0; j < definition.myCount_width; j += 1)
+                  {
+                      Draw_circle(top_circle, radius_circles_top, dist_to_center_circle + (i * dist_to_center_circle * 2), dist_to_center_circle + (j * dist_to_center_circle * 2), toString(i~j));
+                      Draw_circle(top_circle_inside, bot_thik, dist_to_center_circle + (i * dist_to_center_circle * 2), dist_to_center_circle + (j *  dist_to_center_circle * 2),"top"~ toString(i~j));                                      
+                       
+                     skText(text, "text"~i ~j, {
+             "text" : str_text,
+             "fontName" : "OpenSans-Regular.ttf",
+             "firstCorner" : vector(2.5+(i*dist_to_bot_big_cir), 3.5 + (j* dist_to_bot_big_cir)) * millimeter,
+             "secondCorner" : vector(4+ (i * dist_to_bot_big_cir),4.5 + (j* dist_to_bot_big_cir)) * millimeter    });
+                  }             
+             }   
+  skSolve(text);    
+  //                          EXTRUDE TEXT
+       extrude(context, id + "extrudetext", {
+             "entities" : qSketchRegion(id + "text", true),
+             "endBound" : BoundingType.BLIND,
+             "depth" : (circle_height+0.1) * millimeter,
+             "operationType" :NewBodyOperationType.ADD
+     });
+ skSolve(top_circle);
+ skSolve(top_circle_inside); 
+ //                         EXTRUDE TOP CIRCLES
+    extrude(context, id + "extrude2", {
+            "entities" : qSketchRegion(id + "top_circles"),
+            "endBound" : BoundingType.BLIND,
+            "depth" :circle_height * millimeter,
+            "operationType" :NewBodyOperationType.ADD    
+    });
+    //                       EXTRUDE HOLES FOR TOP CIRCLES
+        extrude(context, id + "extrude_top_circle_inside", {
+            "entities" : qSketchRegion(id + "top_circle_inside"),
+            "endBound" : BoundingType.BLIND,
+            "depth" :height * millimeter,
+            "operationType" :NewBodyOperationType.REMOVE    
+    });
+   //                        BOTTOM SIDE
+   var bot = newSketch(context, id + "bot", {
+           "sketchPlane" : qCreatedBy(makeId("Top"), EntityType.FACE)
+   });
+  skRectangle(bot, "rectangle_bot", {
+          "firstCorner" : vector(bot_thik, bot_thik) * millimeter,
+          "secondCorner" : vector(len - bot_thik, width - bot_thik) * millimeter
+  }); 
+   skSolve(bot); 
+   //                        EXTRUDE BOTTOM RECTANGLE
+  extrude(context, id + "extrude_bot", {
+          "entities" : qSketchRegion(id + "bot"),
+          "endBound" : BoundingType.BLIND,
+          "depth" : (height - bot_thik) * millimeter,
+          "operationType" :NewBodyOperationType.REMOVE
+  });
+  
+  //                          CONDITIONS FOR BOT
+  //            DEPEND ON SIZE OF BRICK IT WILL BE DIFFERENT BOTTOM
+   var bot_stik = newSketch(context, id + "bot_stik", {
+              "sketchPlane" : qCreatedBy(makeId("Top"), EntityType.FACE)
+      });
+      var flag = false;
+  if (definition.myCount_len == 1 && definition.myCount_width == 1)       // PIECE 1 BY 1
+  {           /*DO NOTHING*/  }
+  else  if ((definition.myCount_len == 1 && definition.myCount_width != 1) )   // BOTOM IF LEN IS 1
+  {     
+      for (var i = 1; i < definition.myCount_width; i += 1)
+      {
+          Draw_circle(bot_stik, bot_stik_thik/2, dist_to_center_circle, dist_to_center_circle * 2 * i, "bot_stik" ~ toString(i));
+      }    
+       flag = true;      
+  }
+  else if ((definition.myCount_len != 1 && definition.myCount_width == 1) )  //BOTOM IF WIDTH IS 1
+  {    
+      for (var i = 1; i < definition.myCount_len; i += 1)
+      {
+        Draw_circle(bot_stik, bot_stik_thik/2, (dist_to_center_circle * 2) * i, dist_to_center_circle, "bot_stik" ~ i);
+      }   
+      flag = true;
+  }
+  else
+  {
+       var bot_stik_else = newSketch(context, id + "bot_stik_else", {
+              "sketchPlane" : qCreatedBy(makeId("Top"), EntityType.FACE)      });
+      var bot_stik_else_middle = newSketch(context, id + "bot_stik_else_middle", {
+              "sketchPlane" : qCreatedBy(makeId("Top"), EntityType.FACE)});
+      for (var i = 1; i < definition.myCount_len; i += 1)
+             {               
+                  for (var j = 1; j < definition.myCount_width; j += 1)
+                  { 
+                    Draw_circle(bot_stik_else, bot_stik_thik,dist_to_bot_big_cir * i , dist_to_bot_big_cir * j, "bot_cir" ~ toString(i~j));
+                     Draw_circle(bot_stik_else_middle, radius_circles_top, dist_to_bot_big_cir * i, dist_to_bot_big_cir * j, "bot_stil_else" ~toString(i~j));
+                  }
+             }
+             //            
+             skSolve(bot_stik_else);
+             skSolve(bot_stik_else_middle);
+  //                          EXTRUDE BOTTOM STICKS
+    extrude(context, id + "extrude_bot_else", {
+             "entities" : qSketchRegion(id + "bot_stik_else"),
+             "endBound" : BoundingType.BLIND,
+             "depth" : height * millimeter,
+             "operationType" :NewBodyOperationType.ADD     });
+  //                          EXTRUDE HOLES INSIDE BOTTOM STICKS     
+     extrude(context, id + "extrude_last", {
+             "entities" : qSketchRegion(id + "bot_stik_else_middle"),
+             "endBound" : BoundingType.BLIND,
+             "depth" : (height - bot_stik_thik) * millimeter,
+             "operationType" :NewBodyOperationType.REMOVE     });
+     }
+     if(flag == true)
+     {
+         skSolve(bot_stik);
+         extrude(context, id + "bot_stik_extrude", {
+          "entities" : qSketchRegion(id + "bot_stik"),
+          "endBound" : BoundingType.BLIND,
+          "depth" : height * millimeter,
+           "operationType" :NewBodyOperationType.ADD  });
+     }
+  //                          DELETE ALL SKETCHES
+  opDeleteBodies(context, id + "deleteBodies1", {"entities" : qSketchFilter(qCreatedBy(id), SketchObject.YES) });
+    });
