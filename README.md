@@ -18,3 +18,5 @@ It is relatively new language, so some tools that i used to use in "hand mode" a
 
 You can see my code in attached .txt files
 
+![](chess1.gif)
+
