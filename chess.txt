@@ -1,0 +1,91 @@
+FeatureScript 1096;
+import(path : "onshape/std/geometry.fs", version : "1096.0");
+
+annotation { "Feature Type Name" : "Chess_v2" }
+export const myFeature = defineFeature(function(context is Context, id is Id, definition is map)
+    precondition
+    {
+         annotation { "Name" : "height" }
+        isInteger(definition.height, POSITIVE_COUNT_BOUNDS);
+        annotation { "Name" : "width" }
+        isInteger(definition.width, POSITIVE_COUNT_BOUNDS);
+    }
+    {
+        var height = definition.height;
+        var width = definition.width;
+        
+        var sketch1 = newSketch(context, id + "sketch1", {
+                "sketchPlane" : qCreatedBy(makeId("Front"), EntityType.FACE)
+        });
+        skLineSegment(sketch1, "line1", {
+                "start" : vector(0, 0) * millimeter,
+                "end" : vector(0, height) * millimeter
+        });
+   
+        skArc(sketch1, "rev1_arc1", {
+                "start" : vector( 0,  height) * millimeter,
+                "mid" :  vector( - width/100*16.75 ,height - height /100 * 16.75) * millimeter,
+                "end" : vector( - width/100*11, height - height/100 * 29.5) * millimeter
+        });
+// make more understandable
+        skFitSpline(sketch1, "spline2", {
+                "points" : [
+                    vector( - width/100*11, height - height/100 * 29.5) * millimeter,
+                    vector( - width/100*15, height - height /100 * 31) * millimeter,
+                    vector( - width/100*15.5,  height - height /100 * 35) * millimeter,
+                    vector(- width/100*9.5, height - height / 100 * 37) * millimeter           
+                ]
+        });
+
+
+        skFitSpline(sketch1, "spline3", {
+                "points" : [
+                     vector(- width/100*9.5, height - height / 100 * 37) * millimeter,
+                    vector( - width/100*11, height - height /100 * 53) * millimeter,
+                    vector( - width/100*17,  height - height /100 * 66.5) * millimeter          
+                ]
+        });
+
+        skFitSpline(sketch1, "spline4", {
+                "points" : [
+                      vector( - width/100*17,  height - height /100 * 66.5) * millimeter,
+                    vector( - width/100*20, height - height /100 * 68.5) * millimeter,
+                     vector( - width/100*23, height - height /100 * 75) * millimeter,
+                    vector( - width/100*23.5,  height - height /100 * 80) * millimeter          
+                ]
+        });
+
+        skFitSpline(sketch1, "spline5", {
+                "points" : [
+                     vector( - width/100*23.5,  height - height /100 * 80) * millimeter,
+                    vector( - width/100*28.5, height - height /100 * 80) * millimeter,
+                     vector( - width/100*32.5, height - height /100 * 83.5) * millimeter,
+                    vector( - width/100*31.5,  height - height /100 * 89) * millimeter,  
+                     vector( - width/100*29,  height - height /100 * 90.5) * millimeter,
+                     vector( - width/100*29,  height - height /100 * 92) * millimeter
+                ]
+        });
+
+        skFitSpline(sketch1, "spline6", {
+                "points" : [
+                      vector( - width/100*29,  height - height /100 * 92) * millimeter,
+                    vector( - width/100*31.5, height - height /100 * 94) * millimeter,
+                     vector( - width/100*31.5, height - height /100 * 98) * millimeter,
+                    vector( - width/100*29,  height - height /100 * 100) * millimeter             
+                ]
+        });
+        
+        skLineSegment(sketch1, "line_bot", {
+                "start" : vector( - width/100*29,  height - height /100 * 100) * millimeter,
+                "end" : vector(0, 0) * millimeter
+        });
+        // Create sketch entities here
+        skSolve(sketch1);
+        
+        opRevolve(context, id + "revolve1", {
+                "entities" : qCreatedBy(id + "sketch1", EntityType.FACE),
+                "axis" :  line(vector(0, 0, 0) * inch, vector(0, 0, 1)),
+                "angleForward" : 360 * degree
+        });
+       deleteBodies(context, id + "deleteBodies1", {"entities" : qSketchFilter(qCreatedBy(id), SketchObject.YES) });
+    });
